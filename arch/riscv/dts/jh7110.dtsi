@@ -20,7 +20,7 @@
 		#size-cells = <0>;
 
 		cpu0: cpu@0 {
-			compatible = "sifive,u74-mc", "riscv";
+			compatible = "sifive,s7", "riscv";
 			reg = <0>;
 			d-cache-block-size = <64>;
 			d-cache-sets = <64>;
@@ -35,7 +35,7 @@
 			i-tlb-size = <40>;
 			mmu-type = "riscv,sv39";
 			next-level-cache = <&cachectrl>;
-			riscv,isa = "rv64imacu";
+			riscv,isa = "rv64imacu_zba_zbb";
 			tlb-split;
 			status = "disabled";
 
@@ -62,7 +62,7 @@
 			i-tlb-size = <40>;
 			mmu-type = "riscv,sv39";
 			next-level-cache = <&cachectrl>;
-			riscv,isa = "rv64imafdcbsux";
+			riscv,isa = "rv64imafdcbsux_zba_zbb";
 			tlb-split;
 			status = "okay";
 
@@ -89,7 +89,7 @@
 			i-tlb-size = <40>;
 			mmu-type = "riscv,sv39";
 			next-level-cache = <&cachectrl>;
-			riscv,isa = "rv64imafdcbsux";
+			riscv,isa = "rv64imafdcbsux_zba_zbb";
 			tlb-split;
 			status = "okay";
 
@@ -116,7 +116,7 @@
 			i-tlb-size = <40>;
 			mmu-type = "riscv,sv39";
 			next-level-cache = <&cachectrl>;
-			riscv,isa = "rv64imafdcbsux";
+			riscv,isa = "rv64imafdcbsux_zba_zbb";
 			tlb-split;
 			status = "okay";
 
@@ -143,7 +143,7 @@
 			i-tlb-size = <40>;
 			mmu-type = "riscv,sv39";
 			next-level-cache = <&cachectrl>;
-			riscv,isa = "rv64imafdcbsux";
+			riscv,isa = "rv64imafdcbsux_zba_zbb";
 			tlb-split;
 			status = "okay";
 
@@ -165,12 +165,9 @@
 
 		pmu {
 			compatible = "riscv,pmu";
-			riscv,event-to-mhpmcounters = <0x5 0x06 0x18
-						    0x08 0x09 0x18>;
+			riscv,event-to-mhpmcounters = <0x5 0x06 0x18>;
 			riscv,event-to-mhpmevent = <0x05 0x00000000 0x4000
-						0x06 0x00000000 0x4001
-						0x08 0x00000000 0x4008
-						0x09 0x00000000 0x4009>;
+						0x06 0x00000000 0x4001>;
 			riscv,raw-event-to-mhpmcounters =
 						<0x00000000 0x100 0xffffffff 0xffffffff 0x18
 						0x00000000 0x200 0xffffffff 0xffffffff 0x18
@@ -555,6 +552,7 @@
 			reg-names = "control";
 			interrupts = <91>;
 			interrupt-controller;
+			gpio-controller;
 			#gpio-cells = <2>;
 			ngpios = <64>;
 			status = "okay";
@@ -566,6 +564,7 @@
 			reg-names = "control";
 			interrupts = <90>;
 			interrupt-controller;
+			gpio-controller;
 			#gpio-cells = <2>;
 			ngpios = <4>;
 			status = "okay";

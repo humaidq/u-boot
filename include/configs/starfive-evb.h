@@ -120,19 +120,41 @@
 	"cpu_vol_1100_set=" 			\
 	"fdt set /opp-table-0/opp-1500000000 opp-microvolt <1100000>;\0"
 
+#define CPU_VOL_1120_SET \
+	"cpu_vol_1120_set=" 			\
+	"fdt set /opp-table-0/opp-1500000000 opp-microvolt <1120000>;\0"
+
 #define CPU_VOL_SET	\
-	"cpu_vol_set="				\
-	"if test ${cpu_max_vol} = 1100000; then "	\
-		"run cpu_vol_1100_set;"			\
-	"elif test ${cpu_max_vol} = 1080000; then "	\
-		"run cpu_vol_1080_set;"			\
-	"elif test ${cpu_max_vol} = 1060000; then "	\
-		"run cpu_vol_1060_set;"			\
-	"elif test ${cpu_max_vol} = 1020000; then "	\
-		"run cpu_vol_1020_set;"			\
-	"else "						\
-		"run cpu_vol_1040_set;"			\
+	"cpu_vol_set="					\
+	"if test ${cpu_max_vol} = 1120000; then "	\
+		"run cpu_vol_1120_set;"			\
+	"elif test ${cpu_max_vol} = 1100000; then " 	\
+		"run cpu_vol_1100_set;" 		\
+	"elif test ${cpu_max_vol} = 1080000; then " 	\
+		"run cpu_vol_1080_set;" 		\
+	"elif test ${cpu_max_vol} = 1060000; then " 	\
+		"run cpu_vol_1060_set;" 		\
+	"elif test ${cpu_max_vol} = 1020000; then " 	\
+		"run cpu_vol_1020_set;" 		\
+	"else " 					\
+		"run cpu_vol_1040_set;" 		\
 	"fi; \0"
+
+#define EVB_BOOTENV_NVME				\
+	"sdev_cmd=mmc\0"				\
+	"sdev_blk=mmcblk0p4\0"				\
+	"scan_nvme_dev="				\
+	"if pci enum; then "				\
+		"nvme scan; "				\
+		"echo pci enum ...;"			\
+	"fi; "						\
+	"if nvme dev; then "				\
+		"setenv sdev_cmd nvme;"			\
+		"setenv sdev_blk nvme0n1p4;"		\
+	"fi; \0"					\
+	"mmcbootenv=run scan_nvme_dev; "		\
+	"fatload ${sdev_cmd} 0:3 $kernel_addr_r jh7110_uEnv.txt; " \
+	"env import -t $kernel_addr_r $filesize; \0"
 
 #define CHIPA_GMAC_SET \
 	"chipa_gmac_set="	\
@@ -169,11 +191,13 @@
 	"ramdisk_addr_r=0x46100000\0"			\
 	CHIPA_GMAC_SET					\
 	CHIPA_SET					\
+	EVB_BOOTENV_NVME				\
 	CPU_VOL_1020_SET				\
 	CPU_VOL_1040_SET				\
 	CPU_VOL_1060_SET				\
 	CPU_VOL_1080_SET				\
 	CPU_VOL_1100_SET				\
+	CPU_VOL_1120_SET				\
 	CPU_VOL_SET					\
 	"type_guid_gpt_loader1=" TYPE_GUID_LOADER1 "\0" \
 	"type_guid_gpt_loader2=" TYPE_GUID_LOADER2 "\0" \
