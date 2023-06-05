@@ -118,9 +118,15 @@
 	"cpu_vol_1100_set=" 			\
 	"fdt set /opp-table-0/opp-1500000000 opp-microvolt <1100000>;\0"
 
+#define CPU_VOL_1120_SET \
+	"cpu_vol_1120_set=" 			\
+	"fdt set /opp-table-0/opp-1500000000 opp-microvolt <1120000>;\0"
+
 #define CPU_VOL_SET	\
-	"cpu_vol_set="				\
-	"if test ${cpu_max_vol} = 1100000; then "	\
+	"cpu_vol_set="					\
+	"if test ${cpu_max_vol} = 1120000; then "	\
+		"run cpu_vol_1120_set;"			\
+	"elif test ${cpu_max_vol} = 1100000; then "	\
 		"run cpu_vol_1100_set;"			\
 	"elif test ${cpu_max_vol} = 1080000; then "	\
 		"run cpu_vol_1080_set;"			\
@@ -135,32 +141,52 @@
 #define VF2_DISTRO_BOOTENV \
 	"fatbootpart=1:3\0"	\
 	"distroloadaddr=0xb0000000\0"	\
-	"load_distro_uenv="	\
-	"fatload mmc ${devnum}:3 ${distroloadaddr} /${bootenv}; " \
+	"bootdev=mmc\0" \
+	"scan_boot_dev="                                        	\
+	"if test ${bootmode} = flash; then "                    	\
+		"if pci enum; then "                            	\
+			"nvme scan; "                           	\
+			"echo pci enum ...;"                    	\
+		"fi; "                                          	\
+		"if nvme dev; then "                            	\
+			"setenv fatbootpart ${devnvme}:${nvmepart};" 	\
+			"setenv devnum ${devnvme};" 			\
+			"setenv bootdev nvme;"   			\
+		"else "                                         	\
+			"if mmc dev ${devnum}; then "                   \
+				"echo found device ${devnum};"          \
+			"else "                                         \
+				"setenv devnum 0;"                      \
+				"mmc dev 0;"                            \
+			"fi; "                                          \
+		"fi; "                                                  \
+	"fi; \0"							\
+	"load_distro_uenv="						\
+	"fatload ${bootdev} ${devnum}:3 ${distroloadaddr} /${bootenv}; " \
 	"setenv fatbootpart ${devnum}:3; " \
 	"env import ${distroloadaddr} 200; \0" \
 	"fdt_loaddtb="	\
-	"fatload mmc ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile}; fdt addr ${fdt_addr_r}; \0" \
+	"fatload ${bootdev} ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile}; fdt addr ${fdt_addr_r}; \0" \
 	"fdt_sizecheck="	\
-	"fatsize mmc ${fatbootpart} /dtbs/${fdtfile}; \0"	\
+	"fatsize ${bootdev} ${fatbootpart} /dtbs/${fdtfile}; \0"	\
 	"set_fdt_distro="	\
 	"if test ${chip_vision} = A; then " \
 		"if test ${memory_size} = 200000000; then " \
 			"run chipa_gmac_set;" \
 			"run visionfive2_mem_set;" \
-			"fatwrite mmc ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};" \
+			"fatwrite ${bootdev} ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};" \
 		"else " \
 			"run chipa_gmac_set;" \
 			"run visionfive2_mem_set;"	\
-			"fatwrite mmc ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};"	\
+			"fatwrite ${bootdev} ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};"	\
 		"fi;" \
 	"else "	\
                 "run visionfive2_mem_set;" \
 		"run cpu_vol_set;" \
-                "fatwrite mmc ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};" \
+                "fatwrite ${bootdev} ${fatbootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize};" \
 	"fi; \0"	\
 	"bootcmd_distro=" 	\
-	"run fdt_loaddtb; run fdt_sizecheck; run set_fdt_distro; sysboot mmc ${fatbootpart} fat c0000000 /${boot_syslinux_conf}; \0"	\
+	"run fdt_loaddtb; run fdt_sizecheck; run set_fdt_distro; sysboot ${bootdev} ${fatbootpart} fat c0000000 /${boot_syslinux_conf}; \0"	\
 
 #define PARTS_DEFAULT							\
 	"name=loader1,start=17K,size=1M,type=${type_guid_gpt_loader1};" \
@@ -204,6 +230,11 @@
 	"run visionfive2_mem_set;"		\
 	"run chipa_gmac_set; \0"		\
 
+#define VISIONFIVE2_BOOTENV_NVME	\
+	"nvmepart=3\0"			\
+	"devnvme=0\0"			\
+	"nvme_env=vf2_nvme_uEnv.txt\0"	\
+
 #define VISIONFIVE2_BOOTENV		\
 	"bootenv=uEnv.txt\0"		\
 	"testenv=vf2_uEnv.txt\0"	\
@@ -215,41 +246,54 @@
 	"ext4bootenv="			\
 		"ext4load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootenv}\0"\
 	"importbootenv="		\
-		"echo Importing environment from mmc${devnum} ...; "	\
+		"echo Importing environment from ${devnum}/${devnvme} ...; "\
 		"env import -t ${loadaddr} ${filesize}\0"	\
 	"scan_mmc_dev="						\
 	"if test ${bootmode} = flash; then "			\
-		"if mmc dev ${devnum}; then "			\
-			"echo found device ${devnum};"		\
-		"else "						\
-			"setenv devnum 0;"			\
-			"mmc dev 0;"				\
+		"if pci enum; then "				\
+			"nvme scan; "				\
+			"echo pci enum ...;"			\
 		"fi; "						\
-	"fi; "							\
-	"echo bootmode ${bootmode} device ${devnum};\0"		\
+		"if nvme dev; then "				\
+			"setenv btpart ${devnvme}:${nvmepart};" \
+			"setenv load_vf2_env fatload nvme ${btpart} ${loadaddr} ${nvme_env};"	\
+		"else "						\
+			"if mmc dev ${devnum}; then "			\
+				"echo found device ${devnum};"		\
+			"else "						\
+				"setenv devnum 0;"			\
+				"mmc dev 0;"				\
+			"fi; "						\
+			"if mmc rescan; then " 				\
+				"run loadbootenv && run importbootenv; "\
+				"run ext4bootenv && run importbootenv; "\
+				"if test -n $uenvcmd; then "		\
+					"echo Running uenvcmd ...; "	\
+					"run uenvcmd; "			\
+				"fi; "					\
+			"fi; "						\
+		"fi; "							\
+	"fi; "								\
+	"echo bootmode ${bootmode} device ${devnum}/${devnvme};\0"	\
 	"mmcbootenv=run scan_mmc_dev; "				\
-		"setenv bootpart ${devnum}:${mmcpart}; " 	\
-		"if mmc rescan; then " 				\
-			"run loadbootenv && run importbootenv; "	\
-			"run ext4bootenv && run importbootenv; "	\
-			"if test -n $uenvcmd; then "		\
-				"echo Running uenvcmd ...; "	\
-				"run uenvcmd; "			\
-			"fi; "					\
-		"fi\0"						\
+	"setenv bootpart ${devnum}:${mmcpart};\0" 		\
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS			\
 	"fdt_high=0xffffffffffffffff\0"			\
 	"initrd_high=0xffffffffffffffff\0"		\
 	"kernel_addr_r=0x40200000\0"			\
+	"kernel_comp_addr_r=0x90000000\0"		\
+	"kernel_comp_size=0x10000000\0"			\
 	"fdt_addr_r=0x46000000\0"			\
 	"scriptaddr=0x43900000\0"			\
 	"script_offset_f=0x1fff000\0"			\
 	"script_size_f=0x1000\0"			\
 	"pxefile_addr_r=0x45900000\0"			\
 	"ramdisk_addr_r=0x46100000\0"			\
+	"fdtoverlay_addr_r=0x4f000000\0"		\
 	VF2_DISTRO_BOOTENV				\
+	VISIONFIVE2_BOOTENV_NVME			\
 	VISIONFIVE2_BOOTENV				\
 	CHIPA_GMAC_SET					\
 	CHIPA_SET					\
@@ -258,6 +302,7 @@
 	CPU_VOL_1060_SET				\
 	CPU_VOL_1080_SET				\
 	CPU_VOL_1100_SET				\
+	CPU_VOL_1120_SET				\
 	CPU_VOL_SET					\
 	CHIPA_SET_FORCE					\
 	VISIONFIVE2_MEM_SET				\
@@ -288,11 +333,6 @@
 
 #define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_VIDEO_LOGO
-#if 0
-#define CONFIG_BMP_16BPP
-#define CONFIG_BMP_24BPP
-#define CONFIG_BMP_32BPP
-#endif
 
-#endif /* _STARFIVE_EVB_H */
+#endif /* _PINE64_STAR64_H */
 
